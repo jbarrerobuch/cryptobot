@@ -341,10 +341,10 @@ def perform_triangular_arbitrage(scrip1, scrip2, scrip3, arbitrage_type,investme
             return None
 
     profit = check_profit_loss(OP_return,scrip_amounts[scrip1], min_profit_percentage)
-    result = f"{dt.datetime.now().strftime('%d-%b-%Y %H:%M:%S.%f')},\
-            {arbitrage_type}, {scrip1}, {scrip_prices[scrip1]}, {scrip_amounts[scrip1]},\
-            {scrip2}, {scrip_prices[scrip2]}, {scrip_amounts[scrip2]}, {scrip3}, {scrip_prices[scrip3]}, {scrip_amounts[scrip3]},\
-            {scrip_amounts[scrip1]}, {OP_return}, {profit}"
+    result = f"{dt.datetime.now().strftime('%d-%b-%Y %H:%M:%S.%f')},"\
+            f"{arbitrage_type}, {scrip1}, {scrip_prices[scrip1]}, {scrip_amounts[scrip1]},"\
+            f"{scrip2}, {scrip_prices[scrip2]}, {scrip_amounts[scrip2]}, {scrip3}, {scrip_prices[scrip3]}, {scrip_amounts[scrip3]},"\
+            f"{scrip_amounts[scrip1]}, {OP_return}, {profit}"
 
     if profit:
         #place_trade_orders(arbitrage_type, scrip1, scrip2, scrip3, initial_investment, scrip_prices)
@@ -416,8 +416,8 @@ def checkLimits(verbose= False):
     # Handle 1 minute average limit
     avgMin = AVGrequestsPerMin(requestPerMin['requests'],requestPerMin['start'])
     if avgMin >= 1200:
-        if verbose in [True,'rateLimit']: print(f'Request per minute limit reached, sleeping 5 minutes')
-        time.sleep(300)
+        if verbose in [True,'rateLimit']: print(f'Request per minute limit reached, sleeping 1 minute')
+        time.sleep(60)
     
     # Limit verbose
     if verbose in [True,'rateLimit']: 
