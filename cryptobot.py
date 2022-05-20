@@ -163,6 +163,9 @@ def check_buy_buy_sell(scrip1, scrip2, scrip3, investment_max_limit = 100):
     min3 = spot_market.loc[scrip3]['amount_min']
 
     if verbose: print(f'Max inv: {investment_max_limit}')
+    if (vol1 == 0) or (vol2 == 0) or (vol3 == 0):
+        if verbose: print('Vol of any OP is 0, skip OP')
+        return None
 
     #Check volume of asset 1 is greater than investment limit
     if (investment_max_limit > vol1) and (vol1 > min1):
@@ -236,6 +239,9 @@ def check_buy_sell_sell(scrip1, scrip2, scrip3, investment_max_limit = 100):
     min3 = spot_market.loc[scrip3]['amount_min']
 
     if verbose: print(f'Max inv: {investment_max_limit}')
+    if (vol1 == 0) or (vol2 == 0) or (vol3 == 0):
+        if verbose: print('Vol of any OP is 0, skip OP')
+        return None
 
     #Check volume of asset 1 is greater than investment limit
     if (investment_max_limit > vol1) and (vol1 > min1):
@@ -251,7 +257,7 @@ def check_buy_sell_sell(scrip1, scrip2, scrip3, investment_max_limit = 100):
     # Return of Trade 1 is invested (amount2) in trade 2
     rtn = amount1/fullfetch[scrip1]['ask']                                                  # Gross return trade 1
     fee = rtn*spot_market.loc[scrip1]['taker']                                              # Fee cost trade 1
-    amount2 = float(exchange.amount_to_precision(scrip2, rtn - fee))                                # Net return Trade 1 BUY is amount for trade 2
+    amount2 = float(exchange.amount_to_precision(scrip2, rtn - fee))                        # Net return Trade 1 BUY is amount for trade 2
     if verbose in [True]: print(f'Return1 {rtn}, fee1 {fee}, Amount2 {amount2}')
 
     # Check volume available in trade 2
@@ -266,7 +272,7 @@ def check_buy_sell_sell(scrip1, scrip2, scrip3, investment_max_limit = 100):
         if verbose: print(f'Amount covered by Vol2, to buy {amount2}')
 
     # Return of trade 2 is invested (amount3) in trade 2
-    rtn = amount2/fullfetch[scrip2]['ask']                                                    # Gross return trade 2
+    rtn = amount2*fullfetch[scrip2]['ask']                                                    # Gross return trade 2
     fee = rtn*spot_market.loc[scrip2]['taker']                                                # Fee cost trade 2
     amount3 = float(exchange.amount_to_precision(scrip2, rtn - fee))                          # Net return Trade 2 BUY is amount for trade 3
     if verbose in [True, 'trade']: print(f'Return2 {rtn}, fee2 {fee}, Amount3 {amount3}')
@@ -291,63 +297,6 @@ def check_buy_sell_sell(scrip1, scrip2, scrip3, investment_max_limit = 100):
     scrip_amounts = {scrip1: amount1, scrip2: amount2, scrip3: amount3}
 
     return OP_return, scrip_prices, scrip_amounts
-
-# %%
-#def check_buy_sell_sell(scrip1, scrip2, scrip3,investment_max_limit = 100, investment_min_limit = 5):
-#        
-#    fullfetch = fetch_current_ticker_price([scrip1, scrip2, scrip3])
-#    if verbose == True:
-#        print(f'{scrip1}: {fullfetch[scrip1]["bid"]}/{fullfetch[scrip1]["bidVolume"]} - {fullfetch[scrip1]["ask"]}/{fullfetch[scrip1]["askVolume"]}')
-#        print(f'{scrip2}: {fullfetch[scrip2]["bid"]}/{fullfetch[scrip2]["bidVolume"]} - {fullfetch[scrip2]["ask"]}/{fullfetch[scrip2]["askVolume"]}')
-#        print(f'{scrip3}: {fullfetch[scrip3]["bid"]}/{fullfetch[scrip3]["bidVolume"]} - {fullfetch[scrip3]["ask"]}/{fullfetch[scrip3]["askVolume"]}')
-#
-#    # Vol analysis for OP size and PNL - FIT CODE
-#    vol1 = fullfetch[scrip1]['bid']*fullfetch[scrip1]['bidVolume']
-#    vol2 = fullfetch[scrip2]['ask']*fullfetch[scrip2]['bidVolume']
-#    vol3 = fullfetch[scrip3]['ask']*fullfetch[scrip3]['askVolume']
-#
-#    if verbose: print(f'Max inv: {investment_max_limit}')
-#    #Check volume of asset 1 is greater than investment limit
-#    if (investment_max_limit > vol1) and (vol1 > investment_min_limit):
-#        amount1 = vol1
-#        if verbose: print(f'Max inv reached to buy {amount1}')
-#    elif vol1 < investment_min_limit:
-#        if verbose: print(f'Vol1 lower than min {vol1}')
-#        return None
-#    else:
-#        amount1 = investment_max_limit
-#        if verbose: print(f'amount to buy {amount1}')
-#
-#    #Check volume of asset 2 is greater than investment limit
-#    amount2 = round(round(amount1/fullfetch[scrip1]['bid'], 8) * (1-marketFeesDF.loc[scrip1]['taker']), 8) #include commission
-#    if verbose: print(f'amount2 to buy: {amount2}')
-#    if (amount2 > vol2) and (vol2 > investment_min_limit):
-#        amount2 = vol2
-#        amount1 = round(amount2 * fullfetch[scrip1]['bid'], 8) # Reverse conversion without commission
-#        if verbose: print(f'Max amount2 reached to buy {amount2}, amount1 {amount1}')
-#    elif vol2 < investment_min_limit:
-#        if verbose: print(f'Vol1 lower than min {vol1}')
-#        return None    
-#        
-#    #Check volume of asset 2 is greater than investment limit
-#    amount3 = round(round(amount2 * fullfetch[scrip2]['ask'], 8) * (1-marketFeesDF.loc[scrip2]['taker']), 8)
-#    if verbose: print(f'amount3 to sell {amount3}')
-#    if (amount3 > vol3) and (vol3 > investment_min_limit):
-#        amount3 = vol3
-#        amount2 = round(amount3 / fullfetch[scrip2]['bid'], 8) # Reverse conversion without comission
-#        amount1 = round(amount2 * fullfetch[scrip1]['bid'], 8) # Reverse conversion without comission
-#        if verbose: print(f'Max amount3 reached to sell {amount3}, amount2 {amount2}, amount1 {amount1}')
-#    elif vol3 < investment_min_limit:
-#        if verbose: print(f'Vol1 lower than min {vol1}')
-#        return None
-#    
-#    OP_return = round(round(amount3 * fullfetch[scrip3]['ask'], 8) * (1-marketFeesDF.loc[scrip3]['taker']),8) #include commission in price
-#    if verbose: print('OP Return', OP_return)
-#
-#    scrip_prices = {scrip1 : fullfetch[scrip1]["bid"], scrip2 : fullfetch[scrip2]['ask'], scrip3 : fullfetch[scrip3]['ask']}
-#    scrip_amounts = {scrip1: amount1, scrip2: amount2, scrip3: amount3}
-#
-#    return OP_return, scrip_prices, scrip_amounts
 
 # %%
 def check_profit_loss(OP_return, initial_investment, min_profit):
@@ -443,25 +392,25 @@ def perform_triangular_arbitrage(scrip1, scrip2, scrip3, arbitrage_type,investme
 #50 órdenes cada 10 segundos
 #160 000 órdenes cada 24 horas
 #Nuestros límites estrictos están incluidos en el punto final [/api/v3/exchangeInfo].
-#placeholderTime = dt.datetime.strptime('00:00', '%H:%M')
-#requestPerMin = {'start': placeholderTime , 'requests': 0}
-#requestPer10sec = {'start': placeholderTime, 'end': placeholderTime, 'requests': 0}
-#requestPer24h = {'start': placeholderTime, 'end': placeholderTime, 'requests': 0}
-#
-#limit10sec = False
-#limitPerMin = False
-#limitPer24H = False
-#
-## Calculate average request per minute
-#def AVGrequestsPerMin(requests, start, end = dt.datetime.now()):
-#    print(end)
-#    interval = end - start
-#    print(interval)
-#    try:
-#        avg = round(requests/ round(interval.total_seconds()/60,0), 0)
-#    except ZeroDivisionError:
-#        avg = 0
-#    return avg
+placeholderTime = dt.datetime.strptime('00:00', '%H:%M')
+requestPerMin = {'start': placeholderTime , 'requests': 0}
+requestPer10sec = {'start': placeholderTime, 'end': placeholderTime, 'requests': 0}
+requestPer24h = {'start': placeholderTime, 'end': placeholderTime, 'requests': 0}
+
+limit10sec = False
+limitPerMin = False
+limitPer24H = False
+
+# Calculate average request per minute
+def AVGrequestsPerMin(requests, start, end = dt.datetime.now()):
+    print(end)
+    interval = end - start
+    print(interval)
+    try:
+        avg = round(requests/ round(interval.total_seconds()/60,0), 0)
+    except ZeroDivisionError:
+        avg = 0
+    return avg
 
 # %%
 #def checkLimits(verbose= False):
@@ -507,7 +456,7 @@ verbose = False
 INVESTMENT_AMOUNT_DOLLARS = 100
 MIN_PROFIT_percentage = 0.01
 #BROKERAGE_PER_TRANSACTION_PERCENT = 0.2 ## taken from marketFeesDF
-
+errCatch = 0
 #Start minute average counter
 #requestPerMin['start'] = dt.datetime.now()
 
@@ -523,41 +472,60 @@ while(True):
         s2 = f'{ticker}/{intermediate}'  # Eg: ETH/BTC
         s3 = f'{ticker}/{base}'          # Eg: ETH/USDT
 
-        # Set max investment amount
-        wallet = exchange.fetchBalance()
-        if wallet['USDT']['free'] > 100:
-            INVESTMENT_AMOUNT_DOLLARS = 100
-        else:
-            INVESTMENT_AMOUNT_DOLLARS = wallet['USDT']['free']
+        try:
 
-        # check request limits and sleep if exceed
-        #checkLimits(verbose=verbose)
+            # Set max investment amount
+            wallet = exchange.fetchBalance()
+            if wallet['USDT']['free'] > 100:
+                INVESTMENT_AMOUNT_DOLLARS = 100
+            else:
+                INVESTMENT_AMOUNT_DOLLARS = wallet['USDT']['free']
 
-        # Check triangular arbitrage for buy-buy-sell 
-        bbs = perform_triangular_arbitrage(s1,s2,s3,'BUY_BUY_SELL',INVESTMENT_AMOUNT_DOLLARS, MIN_PROFIT_percentage)
+            # check request limits and sleep if exceed
+            #checkLimits(verbose=verbose)
 
-        if not os.path.exists(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv'):
-            with open(f'TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
-                f.write('combination_ID,date,arbitrage_type,pair_1, price_1, amount_1, pair_2, price_2, amount_2, pair_3, price_3, amount_3, initial_amount, OP_return, Profitable, exe_time\n')
-        
-        #result = f"{dt.datetime.now().strftime('%d-%b-%Y %H:%M:%S.%f')},"\
-        #    f"{arbitrage_type}, {scrip1}, {scrip_prices[scrip1]}, {scrip_amounts[scrip1]},"\
-        #    f"{scrip2}, {scrip_prices[scrip2]}, {scrip_amounts[scrip2]}, {scrip3}, {scrip_prices[scrip3]}, {scrip_amounts[scrip3]},"\
-        #    f"{scrip_amounts[scrip1]}, {OP_return}, {profit}"
+            # Check triangular arbitrage for buy-buy-sell 
+            bbs = perform_triangular_arbitrage(s1,s2,s3,'BUY_BUY_SELL',INVESTMENT_AMOUNT_DOLLARS, MIN_PROFIT_percentage)
+
+            if not os.path.exists(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv'):
+                with open(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
+                    f.write('combination_ID,date,arbitrage_type,pair_1, price_1, amount_1, pair_2, price_2, amount_2, pair_3, price_3, amount_3, initial_amount, OP_return, Profitable, exe_time\n')
+            
+            #result = f"{dt.datetime.now().strftime('%d-%b-%Y %H:%M:%S.%f')},"\
+            #    f"{arbitrage_type}, {scrip1}, {scrip_prices[scrip1]}, {scrip_amounts[scrip1]},"\
+            #    f"{scrip2}, {scrip_prices[scrip2]}, {scrip_amounts[scrip2]}, {scrip3}, {scrip_prices[scrip3]}, {scrip_amounts[scrip3]},"\
+            #    f"{scrip_amounts[scrip1]}, {OP_return}, {profit}"
 
 
-        if not bbs == None:
-            with open(f'TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
-                f.write(combination_ID+','+bbs+'\n')
+            if not bbs == None:
+                with open(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
+                    f.write(combination_ID+','+bbs+'\n')
 
-        # check request limits
-        #checkLimits(verbose= True)
+            # check request limits
+            #checkLimits(verbose= True)
 
-        # Check triangular arbitrage for buy-sell-sell 
-        bss = perform_triangular_arbitrage(s3,s2,s1,'BUY_SELL_SELL',INVESTMENT_AMOUNT_DOLLARS, MIN_PROFIT_percentage)
-        if not bss == None:
-            with open(f'TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
-                f.write(combination_ID+','+bss+'\n')
+            # Check triangular arbitrage for buy-sell-sell 
+            bss = perform_triangular_arbitrage(s3,s2,s1,'BUY_SELL_SELL',INVESTMENT_AMOUNT_DOLLARS, MIN_PROFIT_percentage)
+            if not bss == None:
+                with open(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
+                    f.write(combination_ID+','+bss+'\n')
+            errCatch = 0
+            
+        except TimeoutError:
+            if errCatch == 1:
+                print('Sleeping 30 minutes')
+                time.sleep(30*60)
+                errCatch +=1
+            elif errCatch == 2:
+                print('2nd Error catched')
+                time.sleep(60*60)
+                errCatch += 1
+            elif errCatch == 3:
+                print('3rd timeout cached')
+                time.sleep(90*60)
+                errCatch += 1
+            else:
+                break
 
 # %% [markdown]
 # # Improvements
@@ -572,7 +540,8 @@ while(True):
 # 
 # 
 # # Bugfixing
-# Execution time: is calculate in each OP check but result is always negative. [DONE]
+# Execution time: is calculate in each OP check but result is always negative. [DONE]  
+# OP2 in BSS is amount/price instead of amount*price [20/05/22] [Tesing]
 # 
 
 
