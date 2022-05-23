@@ -319,26 +319,45 @@ def place_sell_order(scrip, quantity, limit):
 def place_trade_orders(type, scrip1, scrip2, scrip3, initial_amount, scrip_prices):
     final_amount = 0.0
     if type == 'BUY_BUY_SELL':
+        
+        # Trade 1
         s1_quantity = initial_amount/scrip_prices[scrip1]
-        place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1])
+        order = place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1])
+        if verbose in [True]: print(order)
+        if verbose in ['trade']: print(f'Order 1: {order["symbol"]} {order["side"]} {order["status"]} {order["price"]} {order["amount"]} {order["filled"]} {order["remaining"]} {order["cost"]} {order["fee"]}')
         
-        s2_quantity = s1_quantity/scrip_prices[scrip2]
-        place_buy_order(scrip2, s2_quantity, scrip_prices[scrip2])
+        # Trade 2
+        s2_quantity = float(order['amount'])/scrip_prices[scrip2]
+        order = place_buy_order(scrip2, s2_quantity, scrip_prices[scrip2])
+        if verbose in [True]: print('Order 2',order)
+        if verbose in ['trade']: print(f'Order 2: {order["symbol"]} {order["side"]} {order["status"]} {order["price"]} {order["amount"]} {order["filled"]} {order["remaining"]} {order["cost"]} {order["fee"]}')
         
-        s3_quantity = s2_quantity
-        place_sell_order(scrip3, s3_quantity, scrip_prices[scrip3])
+        # Trade 3
+        s3_quantity = float(order['amount'])
+        order = place_sell_order(scrip3, s3_quantity, scrip_prices[scrip3])
+        if verbose in [True]: print('Order 3',order)
+        if verbose in ['trade']: print(f'Order 3: {order["symbol"]} {order["side"]} {order["status"]} {order["price"]} {order["amount"]} {order["filled"]} {order["remaining"]} {order["cost"]} {order["fee"]}')
+    
+    
         
     elif type == 'BUY_SELL_SELL':
         s1_quantity = initial_amount/scrip_prices[scrip1]
-        place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1])
+        order = place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1])
+        if verbose in [True]: print(order)
+        if verbose in ['trade']: print(f'Order 1: {order["symbol"]} {order["side"]} {order["status"]} {order["price"]} {order["amount"]} {order["filled"]} {order["remaining"]} {order["cost"]} {order["fee"]}')
         
-        s2_quantity = s1_quantity
-        place_sell_order(scrip2, s2_quantity, scrip_prices[scrip2])
+        s2_quantity = order['amount']
+        order = place_sell_order(scrip2, s2_quantity, scrip_prices[scrip2])
+        if verbose in [True]: print('Order 2',order)
+        if verbose in ['trade']: print(f'Order 2: {order["symbol"]} {order["side"]} {order["status"]} {order["price"]} {order["amount"]} {order["filled"]} {order["remaining"]} {order["cost"]} {order["fee"]}')
         
-        s3_quantity = s2_quantity * scrip_prices[scrip2]
-        place_sell_order(scrip3, s3_quantity, scrip_prices[scrip3])
-        
-        
+        s3_quantity = order['amount'] * scrip_prices[scrip2]
+        order = place_sell_order(scrip3, s3_quantity, scrip_prices[scrip3])
+        if verbose in [True]: print('Order 3',order)
+        if verbose in ['trade']: print(f'Order 3: {order["symbol"]} {order["side"]} {order["status"]} {order["price"]} {order["amount"]} {order["filled"]} {order["remaining"]} {order["cost"]} {order["fee"]}')
+    
+    final_amount = order['amount']
+
     return final_amount
 
 # %% [markdown]
@@ -370,16 +389,18 @@ def perform_triangular_arbitrage(scrip1, scrip2, scrip3, arbitrage_type,investme
             return None
 
     profit = check_profit_loss(OP_return,scrip_amounts[scrip1], min_profit_percentage)
+
     result = f"{dt.datetime.now().strftime('%d-%b-%Y %H:%M:%S.%f')},"\
             f"{arbitrage_type}, {scrip1}, {scrip_prices[scrip1]}, {scrip_amounts[scrip1]},"\
             f"{scrip2}, {scrip_prices[scrip2]}, {scrip_amounts[scrip2]}, {scrip3}, {scrip_prices[scrip3]}, {scrip_amounts[scrip3]},"\
             f"{scrip_amounts[scrip1]}, {OP_return}, {profit}"
 
     if profit:
-        #place_trade_orders(arbitrage_type, scrip1, scrip2, scrip3, initial_investment, scrip_prices)
+        #place_trade_orders(arbitrage_type, scrip1, scrip2, scrip3, investment_limit, scrip_prices)
         print(result)
     end_time = time.time()
     exe_time = end_time - start_time
+
     result += f',{exe_time}'
     return result
 
@@ -452,11 +473,10 @@ def AVGrequestsPerMin(requests, start, end = dt.datetime.now()):
 
 # %%
 # brokerage commission from API included in price @ check bbs or sbb strategies
-verbose = False
-INVESTMENT_AMOUNT_DOLLARS = 100
+verbose = 'error' # True/False, error, trade
+max_inveted_amount = 10
 MIN_PROFIT_percentage = 0.01
 #BROKERAGE_PER_TRANSACTION_PERCENT = 0.2 ## taken from marketFeesDF
-errCatch = 0
 #Start minute average counter
 #requestPerMin['start'] = dt.datetime.now()
 
@@ -477,15 +497,15 @@ while(True):
             # Set max investment amount
             wallet = exchange.fetchBalance()
             if wallet['USDT']['free'] > 100:
-                INVESTMENT_AMOUNT_DOLLARS = 100
+                max_inveted_amount = 100
             else:
-                INVESTMENT_AMOUNT_DOLLARS = wallet['USDT']['free']
+                max_inveted_amount = wallet['USDT']['free']
 
             # check request limits and sleep if exceed
             #checkLimits(verbose=verbose)
 
             # Check triangular arbitrage for buy-buy-sell 
-            bbs = perform_triangular_arbitrage(s1,s2,s3,'BUY_BUY_SELL',INVESTMENT_AMOUNT_DOLLARS, MIN_PROFIT_percentage)
+            bbs = perform_triangular_arbitrage(s1,s2,s3,'BUY_BUY_SELL',max_inveted_amount, MIN_PROFIT_percentage)
 
             if not os.path.exists(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv'):
                 with open(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
@@ -505,25 +525,36 @@ while(True):
             #checkLimits(verbose= True)
 
             # Check triangular arbitrage for buy-sell-sell 
-            bss = perform_triangular_arbitrage(s3,s2,s1,'BUY_SELL_SELL',INVESTMENT_AMOUNT_DOLLARS, MIN_PROFIT_percentage)
+            bss = perform_triangular_arbitrage(s3,s2,s1,'BUY_SELL_SELL',max_inveted_amount, MIN_PROFIT_percentage)
             if not bss == None:
                 with open(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
                     f.write(combination_ID+','+bss+'\n')
-            errCatch = 0
+            errCatch = 0                                    # Restart error counter after complete execution without exceptions
             
-        except TimeoutError:
+        except ccxt.NetworkError as err:
+            if verbose in [True,'error']: print(f'Network error: {err}')
             if errCatch == 1:
-                print('Sleeping 30 minutes')
+                if verbose in [True,'error']: print(f'Error catch {errCatch} Sleeping 30 minutes')
                 time.sleep(30*60)
                 errCatch +=1
             elif errCatch == 2:
-                print('2nd Error catched')
+                if verbose in [True,'error']: print(f'Error catch {errCatch} Sleeping 60 minutes')
                 time.sleep(60*60)
                 errCatch += 1
             elif errCatch == 3:
-                print('3rd timeout cached')
+                if verbose in [True,'error']: print(f'Error catch {errCatch} Sleeping 90 minutes')
                 time.sleep(90*60)
                 errCatch += 1
+            else:
+                if verbose in [True,'error']: print(f'Error catch {errCatch}  BREAK!')
+                break
+        
+        except ccxt.ExchangeError as err:
+            if verbose in [True,'error']: print(f'Network error: {err}')
+            if errCatch <= 5:
+                if verbose in [True,'error']: print(f'Error catch {errCatch} Sleeping 5 minutes')
+                time.sleep(5*60)
+                errCatch +=1
             else:
                 break
 
@@ -541,7 +572,7 @@ while(True):
 # 
 # # Bugfixing
 # Execution time: is calculate in each OP check but result is always negative. [DONE]  
-# OP2 in BSS is amount/price instead of amount*price [20/05/22] [Tesing]
-# 
+# OP2 in BSS is amount/price instead of amount*price [20/05/22] [Tesing]  
+# TimeOut Error appers after a while running. Added an Error Catch [22/05/22][Testing]
 
 
