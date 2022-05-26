@@ -474,7 +474,7 @@ def AVGrequestsPerMin(requests, start, end = dt.datetime.now()):
 # %%
 # brokerage commission from API included in price @ check bbs or sbb strategies
 verbose = 'error' # True/False, error, trade
-max_inveted_amount = 10
+max_inveted_amount = 100
 MIN_PROFIT_percentage = 0.01
 #BROKERAGE_PER_TRANSACTION_PERCENT = 0.2 ## taken from marketFeesDF
 #Start minute average counter
