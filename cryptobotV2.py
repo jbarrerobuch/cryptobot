@@ -436,7 +436,7 @@ def place_trade_orders(type, scrip1, scrip2, scrip3, initial_amount, scrip_price
     elif type == 'BUY_SELL_SELL':
         s1_quantity = initial_amount/scrip_prices[scrip1]
         order1 = place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1])
-        if verbose in [True]: print(order)
+        if verbose in [True]: print(order1)
         if verbose in ['trade','exe']: print(f'Order 1: {order1["symbol"]} {order1["side"]} {order1["status"]} {order1["price"]} {order1["amount"]} {order1["filled"]} {order1["remaining"]} {order1["cost"]} {order1["fee"]}')
         
         s2_quantity = order1['amount']
