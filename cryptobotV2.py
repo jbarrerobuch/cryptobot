@@ -307,10 +307,10 @@ def check_buy_sell_sell(scrip1, scrip2, scrip3, investment_max_limit = 100, verb
 
     # Conditions to reject the OP
     if (av_amount1 < am_min1) or (av_amount2 < am_min2) or (av_amount3 < am_min3):
-        if verbose: print(f'Any available amount is lower than min amount, skip OP. av_amounnt1 {av_amount1}/{am_min1} av_amount2 {av_amount2}/{am_min2} av_amount3 {av_amount3}/{am_min3}')
+        if verbose in [True]: print(f'Any available amount is lower than min amount, skip OP. av_amounnt1 {av_amount1}/{am_min1} av_amount2 {av_amount2}/{am_min2} av_amount3 {av_amount3}/{am_min3}')
         return None
     elif (av_cost1 < ct_min1) or av_cost2 < ct_min2 or av_cost3 < ct_min3:
-        if verbose: print(f'Any available cost is lower than min cost, skip OP. av_cost1 {av_cost1}/{ct_min1} av_cost2 {av_cost2}/{ct_min2} av_cost3 {av_cost3}/{ct_min3}')
+        if verbose in [True]: print(f'Any available cost is lower than min cost, skip OP. av_cost1 {av_cost1}/{ct_min1} av_cost2 {av_cost2}/{ct_min2} av_cost3 {av_cost3}/{ct_min3}')
         return None
 
     # Amount & cost for volume available in scrip1
@@ -386,68 +386,123 @@ def check_buy_sell_sell(scrip1, scrip2, scrip3, investment_max_limit = 100, verb
 
 # %%
 def check_profit_loss(OP_return, initial_investment, min_profit):
-    min_profitable_price = initial_investment * 1 + min_profit
-    profit = (OP_return >= min_profitable_price)
+    min_profit = initial_investment * (1 + min_profit)
+    profit = (OP_return >= min_profit)
     return profit
-
 
 # %% [markdown]
 # # STEP 3: PLACE THE TRADE ORDERS
 
 # %%
-def place_buy_order(scrip, quantity, limit):
+def place_buy_order(scrip, quantity, limit, slipage = 0):
     quantity = float(exchange.amount_to_precision (scrip, quantity))
-    limit = float(exchange.price_to_precision(scrip,limit))
+    limit =  float(exchange.price_to_precision(scrip,limit * (1+ slipage)))
     order = exchange.create_limit_buy_order(scrip, quantity, limit)
     return order
 
-def place_sell_order(scrip, quantity, limit):
+def place_sell_order(scrip, quantity, limit, slipage = 0):
     quantity = float(exchange.amount_to_precision(scrip, quantity))
-    limit = float(exchange.price_to_precision(scrip,limit))
+    limit = float(exchange.price_to_precision(scrip,limit * (1 - slipage)))
     order = exchange.create_limit_sell_order(scrip, quantity, limit)
     return order 
 
-def place_trade_orders(type, scrip1, scrip2, scrip3, initial_amount, scrip_prices):
-    final_amount = 0.0
-    OP_details = []
+def place_trade_orders(type, scrip1, scrip2, scrip3, initial_amount, scrip_prices, slipage_trade1= 0, slipage_trade2= 0, slipage_trade3= 0):
     start = time.time()
     if type == 'BUY_BUY_SELL':
         
         # Trade 1
         s1_quantity = initial_amount/scrip_prices[scrip1]
-        order1 = place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1])
+        order1 = place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1], slipage= slipage_trade1)
+        status = order1['status']
+        while not status == 'closed':
+            if verbose in [True, 'trade']: print('Waiting to close order1, sleepig 5 sec')
+            time.sleep(5)
+            status = exchange.fetch_order_status(order1['info']['orderId'],order1['symbol'])
+            if status == 'closed':
+                order1 = exchange.fetch_order(order1['info']['orderId'],order1['symbol'])
+                if verbose in [True, 'trade']: print('Order1 closed updated order info')
+            
+        
+        if order1['fee'] == None: order1['fee'] = {'cost': 0}
         if verbose in [True]: print(order1)
-        if verbose in ['trade','exe']: print(f'Order 1: {order1["symbol"]} {order1["side"]} {order1["status"]} {order1["price"]} {order1["amount"]} {order1["filled"]} {order1["remaining"]} {order1["cost"]} {order1["fee"]}')
+        if verbose in ['trade','info']: print(f'Order 1: {order1["symbol"]} order:{order1["side"]} status:{order1["status"]} price:{order1["price"]} amount:{order1["amount"]} filled:{order1["filled"]} remaining:{order1["remaining"]} cost:{order1["cost"]} fee:{order1["fee"]}')
         
         # Trade 2
         s2_quantity = float(order1['amount'])/scrip_prices[scrip2]
-        order2 = place_buy_order(scrip2, s2_quantity, scrip_prices[scrip2])
+        order2 = place_buy_order(scrip2, s2_quantity, scrip_prices[scrip2], slipage= slipage_trade2)
+        status = order2['status']
+        while not status == 'closed':
+            if verbose in [True, 'trade']: print('Waiting to close order2, sleepig 5 sec')
+            time.sleep(5)
+            status = exchange.fetch_order_status(order2['info']['orderId'],order2['symbol'])
+            if status == 'closed':
+                order2 = exchange.fetch_order(order2['info']['orderId'],order2['symbol'])
+                if verbose in [True, 'trade']: print('Order2 closed updated order info')
+    
+        if order2['fee'] == None: order1['fee'] = {'cost': 0}
         if verbose in [True]: print('Order 2',order2)
-        if verbose in ['trade','exe']: print(f'Order 2: {order2["symbol"]} {order2["side"]} {order2["status"]} {order2["price"]} {order2["amount"]} {order2["filled"]} {order2["remaining"]} {order2["cost"]} {order2["fee"]}')
+        if verbose in ['trade','info']: print(f'Order 2: {order2["symbol"]} order:{order2["side"]} status:{order2["status"]} price:{order2["price"]} amount:{order2["amount"]} filled:{order2["filled"]} remaining{order2["remaining"]} cost:{order2["cost"]} fee:{order2["fee"]}')
         
         # Trade 3
         s3_quantity = float(order2['amount'])
-        order3 = place_sell_order(scrip3, s3_quantity, scrip_prices[scrip3])
+        order3 = place_sell_order(scrip3, s3_quantity, scrip_prices[scrip3], slipage= slipage_trade3)
+        status = order3['status']
+        while not status == 'closed':
+            if verbose in [True, 'trade']: print('Waiting to close order3, sleepig 5 sec')
+            time.sleep(5)
+            status = exchange.fetch_order_status(order3['info']['orderId'],order3['symbol'])
+            if status == 'closed':
+                order3 = exchange.fetch_order(order3['info']['orderId'],order3['symbol'])
+                if verbose in [True, 'trade']: print('Order3 closed updated order info')
+    
+        if order3['fee'] == None: order3['fee'] = {'cost': 0}
         if verbose in [True]: print('Order 3',order3)
-        if verbose in ['trade','exe']: print(f'Order 3: {order3["symbol"]} {order3["side"]} {order3["status"]} {order3["price"]} {order3["amount"]} {order3["filled"]} {order3["remaining"]} {order3["cost"]} {order3["fee"]}')
+        if verbose in ['trade','info']: print(f'Order 3: {order3["symbol"]} order:{order3["side"]} status:{order3["status"]} price:{order3["price"]} amount:{order3["amount"]} filled:{order3["filled"]} remaining{order3["remaining"]} cost:{order3["cost"]} fee:{order3["fee"]}')
     
     
         
     elif type == 'BUY_SELL_SELL':
         s1_quantity = initial_amount/scrip_prices[scrip1]
-        order1 = place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1])
+        order1 = place_buy_order(scrip1, s1_quantity, scrip_prices[scrip1],slipage= slipage_trade1)
+        while not status == 'closed':
+            if verbose in [True, 'trade']: print('Waiting to close order1, sleepig 5 sec')
+            time.sleep(5)
+            status = exchange.fetch_order_status(order1['info']['orderId'],order1['symbol'])
+            if status == 'closed':
+                order1 = exchange.fetch_order(order1['info']['orderId'],order1['symbol'])
+                if verbose in [True, 'trade']: print('Order1 closed updated order info')
+        
+        if order1['fee'] == None: order1['fee'] = {'cost': 0}           
         if verbose in [True]: print(order1)
-        if verbose in ['trade','exe']: print(f'Order 1: {order1["symbol"]} {order1["side"]} {order1["status"]} {order1["price"]} {order1["amount"]} {order1["filled"]} {order1["remaining"]} {order1["cost"]} {order1["fee"]}')
+        if verbose in ['trade','info']: print(f'Order 1: {order1["symbol"]} order:{order1["side"]} status:{order1["status"]} price:{order1["price"]} amount:{order1["amount"]} filled:{order1["filled"]} remaining{order1["remaining"]} cost:{order1["cost"]} fee:{order1["fee"]}')
         
         s2_quantity = order1['amount']
-        order2 = place_sell_order(scrip2, s2_quantity, scrip_prices[scrip2])
+        order2 = place_sell_order(scrip2, s2_quantity, scrip_prices[scrip2], slipage= slipage_trade2)
+        while not status == 'closed':
+            if verbose in [True, 'trade']: print('Waiting to close order2, sleepig 5 sec')
+            time.sleep(5)
+            status = exchange.fetch_order_status(order2['info']['orderId'],order2['symbol'])
+            if status == 'closed':
+                order2 = exchange.fetch_order(order2['info']['orderId'],order2['symbol'])
+                if verbose in [True, 'trade']: print('Order2 closed updated order info')
+
+        if order2['fee'] == None: order1['fee'] = {'cost': 0}
         if verbose in [True]: print('Order 2',order2)
-        if verbose in ['trade','exe']: print(f'Order 2: {order2["symbol"]} {order2["side"]} {order2["status"]} {order2["price"]} {order2["amount"]} {order2["filled"]} {order2["remaining"]} {order2["cost"]} {order2["fee"]}')
+        if verbose in ['trade','info']: print(f'Order 2: {order2["symbol"]} order:{order2["side"]} status:{order2["status"]} price:{order2["price"]} amount:{order2["amount"]} filled:{order2["filled"]} remaining{order2["remaining"]} cost:{order2["cost"]} fee:{order2["fee"]}')
         
         s3_quantity = order2['amount'] * scrip_prices[scrip2]
-        order3 = place_sell_order(scrip3, s3_quantity, scrip_prices[scrip3])
+        order3 = place_sell_order(scrip3, s3_quantity, scrip_prices[scrip3], slipage= slipage_trade3)
+        while not status == 'closed':
+            if verbose in [True, 'trade']: print('Waiting to close order3, sleepig 5 sec')
+            time.sleep(5)
+            status = exchange.fetch_order_status(order3['info']['orderId'],order3['symbol'])
+            if status == 'closed':
+                order3 = exchange.fetch_order(order3['info']['orderId'],order3['symbol'])
+                if verbose in [True, 'trade']: print('Order3 closed updated order info')
+        
+        if order3['fee'] == None: order3['fee'] = {'cost': 0}
         if verbose in [True]: print('Order 3',order3)
-        if verbose in ['trade','exe']: print(f'Order 3: {order3["symbol"]} {order3["side"]} {order3["status"]} {order3["price"]} {order3["amount"]} {order3["filled"]} {order3["remaining"]} {order3["cost"]} {order3["fee"]}')
+        if verbose in ['trade','info']: print(f'Order 3: {order3["symbol"]} order:{order3["side"]} status:{order3["status"]} price:{order3["price"]} amount:{order3["amount"]} filled:{order3["filled"]} remaining{order3["remaining"]} cost:{order3["cost"]} fee:{order3["fee"]}')
     
     if not os.path.exists(f'executions\TriBot_exec_{dt.datetime.today().date().strftime("%d%m%Y")}.csv'):
         with open(f'executions\TriBot_exec_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
@@ -456,33 +511,34 @@ def place_trade_orders(type, scrip1, scrip2, scrip3, initial_amount, scrip_price
     end = time.time()
 
     OP_details =[
-        "_".join([order1['id'],order2['id'],order3['id']]),
+        "_".join([order1['info']['orderId'],order2['info']['orderId'],order3['info']['orderId']]),
         dt.datetime.now().strftime('%d-%b-%Y %H:%M:%S.%f'),
         type,
         scrip1,
-        order1['price'],
-        order1['amount'],
-        order1['cost'],
-        order1['fee'],
-        order1['average'],
+        str(order1['price']),
+        str(order1['amount']),
+        str(order1['cost']),
+        str(order1['fee']['cost']),
+        str(order1['average']),
         scrip2,
-        order2['price'],
-        order2['amount'],
-        order2['cost'],
-        order2['fee'],
-        order2['average'],
+        str(order2['price']),
+        str(order2['amount']),
+        str(order2['cost']),
+        str(order2['fee']['cost']),
+        str(order2['average']),
         scrip3,
-        order3['price'],
-        order3['amount'],
-        order3['cost'],
-        order3['fee'],
-        order3['average'],
-        order1['cost'] - order3['cost'],
-        end - start
+        str(order3['price']),
+        str(order3['amount']),
+        str(order3['cost']),
+        str(order3['fee']['cost']),
+        str(order3['average']),
+        str(order3['cost'] - order1['cost']),
+        str(end - start)
         ]
-
+    OP_details = ",".join(OP_details)+'\n'
     with open(f'executions\TriBot_exec_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
-        f.write(",".join(OP_details))
+        print(OP_details)
+        f.write(OP_details)
 
     final_amount = order3['cost']
 
@@ -496,7 +552,7 @@ def place_trade_orders(type, scrip1, scrip2, scrip3, initial_amount, scrip_price
 # # STEP 4: WRAPPING IT TOGETHER
 
 # %%
-def perform_triangular_arbitrage(scrip1, scrip2, scrip3, arbitrage_type,investment_limit, min_profit_percentage,verbose= False):
+def perform_triangular_arbitrage(scrip1, scrip2, scrip3, arbitrage_type,investment_limit, min_profit_percentage, slipage_trade1= 0, slipage_trade2= 0, slipage_trade3= 0, verbose= False):
     start_time = time.time()
     exectuted_return = ''
     tri_id = ''
@@ -524,10 +580,12 @@ def perform_triangular_arbitrage(scrip1, scrip2, scrip3, arbitrage_type,investme
             f"{scrip2}, {scrip_prices[scrip2]}, {scrip_amounts[scrip2]}, {scrip3}, {scrip_prices[scrip3]}, {scrip_amounts[scrip3]},"\
             f"{scrip_costs[scrip1]}, {OP_return}, {profit}"
 
-    if profit:
-        exectuted_return, tri_id = place_trade_orders(arbitrage_type, scrip1, scrip2, scrip3, investment_limit, scrip_prices)
-        print(result)
     if verbose in [True, 'trade']: print(result)
+
+    if profit:
+        exectuted_return, tri_id = place_trade_orders(arbitrage_type, scrip1, scrip2, scrip3, investment_limit, scrip_prices, slipage_trade1= slipage_trade1, slipage_trade2= slipage_trade2, slipage_trade3= slipage_trade3)
+        if verbose in ['info']: print(result)
+
     end_time = time.time()
     exe_time = end_time - start_time
 
@@ -541,9 +599,14 @@ def perform_triangular_arbitrage(scrip1, scrip2, scrip3, arbitrage_type,investme
 verbose = 'trade' # True/False, error, trade, info
 max_invested_amount = 100
 MIN_PROFIT_percentage = 0.01
+errCatch = 0
+slipage_trade1 = 0.000 # Percentage
+slipage_trade2 = 0.000 # Percentage
+slipage_trade3 = 0.0025 # Percentage
 
 while(True):
     for combination in wx_combinations_usdt:
+        if errCatch >= 3: break
 
         base = combination['base']
         intermediate = combination['intermediate']
@@ -565,7 +628,7 @@ while(True):
                 max_invested_amount = wallet['USDT']['free']
 
             # Check triangular arbitrage for buy-buy-sell 
-            bbs = perform_triangular_arbitrage(s1,s2,s3,'BUY_BUY_SELL',max_invested_amount, MIN_PROFIT_percentage, verbose=verbose)
+            bbs = perform_triangular_arbitrage(s1,s2,s3,'BUY_BUY_SELL',max_invested_amount, MIN_PROFIT_percentage,slipage_trade1= slipage_trade1, slipage_trade2= slipage_trade2, slipage_trade3= slipage_trade3, verbose=verbose)
 
             if not os.path.exists(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv'):
                 with open(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
@@ -577,7 +640,7 @@ while(True):
 
 
             # Check triangular arbitrage for buy-sell-sell 
-            bss = perform_triangular_arbitrage(s3,s2,s1,'BUY_SELL_SELL',max_invested_amount, MIN_PROFIT_percentage, verbose=verbose)
+            bss = perform_triangular_arbitrage(s3,s2,s1,'BUY_SELL_SELL',max_invested_amount, MIN_PROFIT_percentage, slipage_trade1= slipage_trade1, slipage_trade2= slipage_trade2, slipage_trade3= slipage_trade3, verbose=verbose)
             if not bss == None:
                 with open(f'output\TriBot_output_{dt.datetime.today().date().strftime("%d%m%Y")}.csv', 'a') as f:
                     f.write(combination_ID+','+bss+'\n')
@@ -586,26 +649,26 @@ while(True):
             
         except ccxt.NetworkError as err:
             if verbose in [True,'error']: print(f'Network error: {err}')
-            if errCatch == 1:
-                if verbose in [True,'error']: print(f'Error catch {errCatch} Sleeping 30 minutes')
+            if errCatch == 0:
+                if verbose in [True,'error', 'info']: print(f'Error catch {errCatch} Sleeping 30 minutes')
                 time.sleep(30*60)
                 errCatch +=1
-            elif errCatch == 2:
-                if verbose in [True,'error']: print(f'Error catch {errCatch} Sleeping 60 minutes')
+            elif errCatch == 1:
+                if verbose in [True,'error', 'info']: print(f'Error catch {errCatch} Sleeping 60 minutes')
                 time.sleep(60*60)
                 errCatch += 1
-            elif errCatch == 3:
-                if verbose in [True,'error']: print(f'Error catch {errCatch} Sleeping 90 minutes')
+            elif errCatch == 2:
+                if verbose in [True,'error', 'info']: print(f'Error catch {errCatch} Sleeping 90 minutes')
                 time.sleep(90*60)
                 errCatch += 1
             else:
-                if verbose in [True,'error']: print(f'Error catch {errCatch}  BREAK!')
+                if verbose in [True,'error', 'info']: print(f'Error catch {errCatch}  BREAK!')
                 break
             
         except ccxt.ExchangeError as err:
-            if verbose in [True,'error']: print(f'Network error: {err}')
-            if errCatch <= 5:
-                if verbose in [True,'error']: print(f'Error catch {errCatch} Sleeping 5 minutes')
+            if verbose in [True,'error', 'info']: print(f'Network error: {err}')
+            if errCatch <= 3:
+                if verbose in [True,'error', 'info']: print(f'Error catch {errCatch} Sleeping 5 minutes')
                 time.sleep(5*60)
                 errCatch +=1
             else:
@@ -617,8 +680,10 @@ while(True):
 # OP Amoint from the top bid and ask [DONE]  
 # Minimun volumen to trade per pair [DONE]  
 # Calculate fee per pair and apply it [DONE]  
-# Handle Strict limits via API [suppose to be done with exchange.enableLimit = True][Testing]  
-# Implement REAL order execution
+# Handle Strict limits via API [suppose to be done with exchange.enableLimit = True][DONE]  
+# Implement REAL order execution [DONE]  
+# Real order execution log [Testing]  
+# Solve not complete executed order. cancell and convert to USDT  
 # Take functions to a .py  
 # Get Pair combinations independently of the position of the asset (base or quote)  
 # Get OP prices by ponderating bids and ask from the order book until the max of investment  
@@ -626,7 +691,14 @@ while(True):
 # 
 # # Bugfixing
 # Execution time: is calculate in each OP check but result is always negative. [DONE]  
-# OP2 in BSS is amount/price instead of amount*price [20/05/22] [Tesing]  
-# TimeOut Error appers after a while running. Added an Error Catch [22/05/22][Testing]  
+# OP2 in BSS is amount/price instead of amount*price [20/05/22] [DONE]  
+# TimeOut Error appers after a while running. Added an Error Catch [22/05/22][Exception added][DONE]  
+# There are fee from executed order equal to None, setting it to 0 to avoid error when concatenating data for CSV [testing]
+
+# %%
+exchange.fetch_order('10245051','BTCUSDT')['info']['orderId']
+
+# %%
+
 
 
