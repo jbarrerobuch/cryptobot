@@ -1,15 +1,12 @@
 # TriangularArbitrageCryptos
 
-Triangular arbitrage is a technique that tries to exploit the price discrepancy across three different assets at the same time.  
-For example, we can exchange BTC for USDT, BTC for ETH and ETH back to USDT.   
-If the net worth in doing these three trades simultaneously is profitable then the 3 trades are executed simultaneously.  
+Triangular arbitrage is an strategy that tries to exploit uncorrelations from 3 correlated markets.  
+For example, BTC/USDT, ETH/BTC, ETH/USDT   
+If the net worth is profitable after trading fees trades will be executed one after the other.  
 
-Here we implement the triangular arbitrage in 4 steps.  
-Step 1: Get all the valid crypto combinations. 
-Step 2: Perform triangular arbitrage  
-Step 3: Place the trade orders  
-Step 4: Bundle it together  
+This price mismatch is calculated from the pondered price to buy certain amount from the order book, not just from the high and low bids and asks.
+Tested execution in binance and bitfinex.
 
 Refer to this blog to understand more on triangular arbitrage implemented in this repo:  
 https://lakshmi1212.medium.com/automated-triangular-arbitrage-of-cryptos-in-4-steps-a678f7b01ce7
-
+forked from: https://github.com/Lakshmi-1212/TriangularArbitrageCryptos
