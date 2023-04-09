@@ -1,9 +1,10 @@
-myconfig.py
-triangular_arbitrage.ipynb
+.idea
+.vscode
+config/myconfig.py
 .gitignore
-triangular_arbitrage-Pondered.ipynb
-__pycache__/CBotfunctions.cpython-39.pyc
-.vscode/settings.json
-config/__pycache__/myconfig.cpython-39.pyc
+__pycache__
+config/__pycache__
+
 triangular_arbitrage.ipynb
+triangular_arbitrage-Pondered.ipynb
 binance_trading_fees_spot.csv
