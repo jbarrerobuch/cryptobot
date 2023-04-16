@@ -41,6 +41,7 @@ class Tribot ():
         # Market info
         self.markets = pd.DataFrame()
         self.get_markets()
+        self.init_assets = ["USDT", "BUSD", "USD", "EUR"]
         self.combinations = []
         self.get_crypto_combinations()
         self.trading_fees = pd.DataFrame()
@@ -101,11 +102,10 @@ class Tribot ():
    
     def get_crypto_combinations(self):
          # STEP 1: GET ALL THE CRYPTO COMBINATIONS FOR USDT
-        init_assets = ["USDT", "BUSD"]
         market_symbols = self.markets.symbol
         combos = []
 
-        for init_asset in init_assets:
+        for init_asset in self.init_assets:
             for symbol1 in market_symbols:
                 base_curr1 = symbol1.split("/")[0]
                 quote_curr1 = symbol1.split("/")[1]
@@ -130,8 +130,6 @@ class Tribot ():
         self.combinations["id"] = self.combinations['base'] + "_" + self.combinations['intermediate'] + "_" + self.combinations['ticker']
         self.combinations = self.combinations.set_index("id", verify_integrity=True)
         self.combinations["score"] = 0
-        
-        if self.verbose in self.verbose_levels["all"]: print(f"No. of {init_assets} combinations: {len(self.combinations)}")
 
     # STEP 2: PERFORM TRIANGULAR ARBITRAGE
     # Utility method to fetch the pondered price
@@ -186,20 +184,20 @@ class Tribot ():
                 # calculate the cost in quote currency
                 cost_available = price * amount_available
 
-                if self.verbose in self.verbose_levels["all"]: 
-                    print(f"Price: {price} Amount avail.: {amount_available} cost avail.: {cost_available}")
-                    print(f"Accumulated cost: {total_cost_accumulated} Accumulated amount: {total_amount_accumulated}")
+                #if self.verbose in self.verbose_levels["all"]: 
+                #    print(f"Price: {price} Amount avail.: {amount_available} cost avail.: {cost_available}")
+                #    print(f"Accumulated cost: {total_cost_accumulated} Accumulated amount: {total_amount_accumulated}")
 
                 if total_cost_accumulated + cost_available >= cost_to_trade:
                     # this ask would put us over the amount we want to trade
 
                     remaining_cost = cost_to_trade - total_cost_accumulated
                     remaining_amount = remaining_cost / price
-                    if self.verbose in self.verbose_levels["all"]:
-                        print("available to buy more than needed")
-                        print(f"cost to trade = trade cost quote - total cost {remaining_cost} = {cost_to_trade} - {total_cost_accumulated}")
-                        print(f"amount to trade: {remaining_amount}")
-                        print(f"Accumulated cost {total_cost_accumulated}, Accumulated amount {total_amount_accumulated}\n")
+                    #if self.verbose in self.verbose_levels["all"]:
+                    #    print("available to buy more than needed")
+                    #    print(f"cost to trade = trade cost quote - total cost {remaining_cost} = {cost_to_trade} - {total_cost_accumulated}")
+                    #    print(f"amount to trade: {remaining_amount}")
+                    #    print(f"Accumulated cost {total_cost_accumulated}, Accumulated amount {total_amount_accumulated}\n")
                     total_cost_accumulated += remaining_cost
                     total_amount_accumulated += remaining_amount
                     limit_price = price
@@ -213,19 +211,19 @@ class Tribot ():
             elif trade == "sell":
 
                 # calculate the value available is the same as the amount
-                if self.verbose in self.verbose_levels["all"]:
-                    print(f"Price: {price} Amount avail.: {amount_available}")
-                    print(f"Accumulated cost: {total_cost_accumulated} Accumulated amount: {total_amount_accumulated}")
+                #if self.verbose in self.verbose_levels["all"]:
+                #    print(f"Price: {price} Amount avail.: {amount_available}")
+                #    print(f"Accumulated cost: {total_cost_accumulated} Accumulated amount: {total_amount_accumulated}")
 
 
                 if total_amount_accumulated + amount_available >= amount_to_trade:
 
                     # this bid would put us over the amount we want to trade
                     remaining_amount = amount_to_trade - total_amount_accumulated
-                    if self.verbose in self.verbose_levels["all"]:
-                        print("available to sell more than needed")
-                        print(f"Amount to trade = trade amount base - total amount {remaining_amount} = {amount_to_trade} - {total_amount_accumulated}")
-                        print(f"Accumulated cost {total_cost_accumulated}, Accumulated amount {total_amount_accumulated}\n")
+                    #if self.verbose in self.verbose_levels["all"]:
+                    #    print("available to sell more than needed")
+                    #    print(f"Amount to trade = trade amount base - total amount {remaining_amount} = {amount_to_trade} - {total_amount_accumulated}")
+                    #    print(f"Accumulated cost {total_cost_accumulated}, Accumulated amount {total_amount_accumulated}\n")
                     total_cost_accumulated += price * remaining_amount
                     total_amount_accumulated += remaining_amount
                     limit_price = price
@@ -665,9 +663,12 @@ class Tribot ():
                 wallet = self.exchange.fetchBalance()
                 if self.verbose in self.verbose_levels["all"]:
                     for asset in init_assets:
-                        print("\n---------------------------------------------")
-                        print(f"\n{asset} balance= {wallet[asset]} max limit investment= {self.investment_limit}")
-                        print(f"Checks: {self.run_summary['total_checks']} Profit trades: {self.run_summary['profitable_trades']} Running time{(dt.datetime.now()-self.run_summary['start_timestamp']).total_seconds()/3600}\n")
+                        print("\n----------------------------------------------------------")
+                        print(f"{asset} balance= {wallet[asset]} max limit investment= {self.investment_limit}")
+                        print(f"Checks: {self.run_summary['total_checks']} Profit trades: {self.run_summary['profitable_trades']}") 
+                        print(f"Running time(Hours): {(dt.datetime.now()-self.run_summary['start_timestamp']).total_seconds()/3600}")
+                        print(f"No. of combinations with {self.init_assets}: {len(self.combinations)}")
+                        print("----------------------------------------------------------\n")
 
             #Sort combination by score, descending and work on top score combination
             self.combinations = self.combinations.sort_values(by="score", ascending=False)
@@ -704,10 +705,15 @@ class Tribot ():
                         f.write("combination_ID,date,arbitrage_type,pair_1,price_1,amount_1,pair_2,price_2,amount_2,pair_3,price_3,amount_3,initial_amount,OP_return,Profitable,exe_time,executed_return,tri_id\n")
                 
                 if not bbs == None:
-                    with open(f"output\TriBot_{self.exchange_name}_output_{dt.datetime.today().date().strftime('%d%m%Y')}.csv", "a") as f:
-                        f.write(combination_ID+","+bbs+"\n")
-
-
+                    try:
+                        with open(f"output\TriBot_{self.exchange_name}_output_{dt.datetime.today().date().strftime('%d%m%Y')}.csv", "a") as f:
+                            f.write(combination_ID+","+bbs+"\n")
+                    except PermissionError:
+                        if self.verbose in self.verbose_levels: print("Catched Permission Error")
+                        f.close()
+                        time.sleep(1)
+                        with open(f"output\TriBot_{self.exchange_name}_output_{dt.datetime.today().date().strftime('%d%m%Y')}.csv", "a") as f:
+                            f.write(combination_ID+","+bbs+"\n")
 
                 # Check triangular arbitrage for buy-sell-sell 
                 bss = self.perform_triangular_arbitrage(pair1=s3, pair2=s2, pair3=s1,
@@ -723,10 +729,12 @@ class Tribot ():
                         with open(f"output\TriBot_{self.exchange_name}_output_{dt.datetime.today().date().strftime('%d%m%Y')}.csv", "a") as f:
                             f.write(combination_ID+","+bss+"\n")
                     except PermissionError:
-                        time.sleep(3)
+                        if self.verbose in self.verbose_levels: print("Catched Permission Error")
+                        f.close()
+                        time.sleep(1)
                         with open(f"output\TriBot_{self.exchange_name}_output_{dt.datetime.today().date().strftime('%d%m%Y')}.csv", "a") as f:
-                            f.write(combination_ID+","+bss+"\n")
-                
+                            f.write(combination_ID+","+bbs+"\n")
+                            
                 errCatch = 0      # Restart error counter after complete execution without exceptions
                 
             except ccxt.NetworkError as err:
