@@ -1,11 +1,12 @@
 # TriangularArbitrageCryptos
-[modify description]
+
 ## Description  
 Triangular arbitrage is an strategy that exploits deviations from 3 correlated markets.
 For example, BTC/USDT, ETH/BTC, ETH/USDT
 If the net worth is profitable after trading fees trades will be executed one after the other.  
   
 This price mismatch is calculated from the pondered price to buy certain amount from the order book, not just from the high and low bids and asks. Tested execution in binance and bitfinex.  
+
 
 Refer to this blog to understand more on triangular arbitrage implemented in this repo:
 https://lakshmi1212.medium.com/automated-triangular-arbitrage-of-cryptos-in-4-steps-a678f7b01ce7  
@@ -40,3 +41,14 @@ Step 4: Bundle it together.
 - There are fees from executed order equal to None, setting it to 0 to avoid error when concatenating data for CSV [Done]  
 - Local variable 'status' referenced before assignment [Done]  
 - After some time running it gets stuck, no error nor exception raised. It happened after getting the pondered price of the second pair. Happened in bitfinex, to check if this happens in binance too.
+=======
+Triangular arbitrage is an strategy that tries to exploit uncorrelations from 3 correlated markets.  
+For example, BTC/USDT, ETH/BTC, ETH/USDT   
+If the net worth is profitable after trading fees trades will be executed one after the other.  
+
+This price mismatch is calculated from the pondered price to buy certain amount from the order book, not just from the high and low bids and asks.
+Tested execution in binance and bitfinex.
+
+Refer to this blog to understand more on triangular arbitrage implemented in this repo:  
+https://lakshmi1212.medium.com/automated-triangular-arbitrage-of-cryptos-in-4-steps-a678f7b01ce7
+forked from: https://github.com/Lakshmi-1212/TriangularArbitrageCryptos
