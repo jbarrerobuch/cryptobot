@@ -1,4 +1,10 @@
-/.idea
-/output
-/executions
-myconfig.py
+.idea
+.vscode
+config/myconfig.py
+.gitignore
+__pycache__
+config/__pycache__
+
+triangular_arbitrage.ipynb
+triangular_arbitrage-Pondered.ipynb
+binance_trading_fees_spot.csv
